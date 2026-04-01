@@ -51,18 +51,30 @@ else
 fi
 
 echo "---Prepare Server---"
-if [ ! -f ${DATA_DIR}/.steam/sdk32/steamclient.so ]; then
-	if [ ! -d ${DATA_DIR}/.steam ]; then
-    	mkdir ${DATA_DIR}/.steam
+# Helper: run a script as the configured non-root user when process is root,
+# otherwise execute directly (Unraid runs containers as non-root by default).
+run_as_user() {
+    target="$1"
+    shift || true
+    if [ "$(id -u)" -eq 0 ]; then
+        if command -v gosu >/dev/null 2>&1; then
+            gosu "${USER}" "$target" "$@"
+        else
+            runuser -u "${USER}" -- "$target" "$@"
+        fi
+    else
+        if [ -x "$target" ]; then
+            "$target" "$@"
+        else
+            /bin/bash "$target" "$@"
+        fi
     fi
-	if [ ! -d ${DATA_DIR}/.steam/sdk32 ]; then
-    	mkdir ${DATA_DIR}/.steam/sdk32
-    fi
-    cp -R ${STEAMCMD_DIR}/linux32/* ${DATA_DIR}/.steam/sdk32/
-fi
+}
+
+run_as_user "${SCRIPTS_DIR}/prepare_server.sh"
+
 chmod -R ${DATA_PERM} ${DATA_DIR}
 echo "---Server ready---"
 
 echo "---Start Server---"
-cd ${SERVER_DIR}
-${SERVER_DIR}/srcds_run -game ${GAME_NAME} ${GAME_PARAMS} -console +port ${GAME_PORT}
+run_as_user "${SCRIPTS_DIR}/start_server.sh"

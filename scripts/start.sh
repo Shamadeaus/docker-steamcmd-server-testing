@@ -23,21 +23,35 @@ echo "---Taking ownership of data...---"
 chown -R root:${GID} /opt/scripts
 chmod -R 750 /opt/scripts
 chown -R ${UID}:${GID} ${DATA_DIR}
-
-# Fix for CSDM not working properly
-if [ -f "${SERVER_DIR}/cstrike/addons/sourcemod/gamedata/cssdm.games.txt" ]; then
-  chmod 550 ${SERVER_DIR}/cstrike/addons/sourcemod/gamedata/cssdm.games.txt
-fi
-
-echo "---Starting...---"
-term_handler() {
-	kill -SIGTERM "$killpid"
-	wait "$killpid" -f 2>/dev/null
-	exit 143;
+chown -R root:${GID} ${SCRIPTS_DIR}
+chmod -R 750 ${SCRIPTS_DIR}
+chown -R ${UID}:${GID} ${SCRIPTS_DIR}
+ 
+# Helper: run a script as the configured non-root user when process is root,
+# otherwise execute directly (Unraid runs containers as non-root by default).
+run_as_user() {
+    target="$1"
+    shift || true
+    if [ "$(id -u)" -eq 0 ]; then
+        if command -v gosu >/dev/null 2>&1; then
+            gosu "${USER}" "$target" "$@"
+        else
+            runuser -u "${USER}" -- "$target" "$@"
+        fi
+    else
+        if [ -x "$target" ]; then
+            "$target" "$@"
+        else
+            /bin/bash "$target" "$@"
+        fi
+    fi
 }
 
-trap 'kill ${!}; term_handler' SIGTERM
-su ${USER} -c "/opt/scripts/start-server.sh" &
+# Start term handler (foreground)
+run_as_user "${SCRIPTS_DIR}/term_handler.sh"
+
+# Start main server script in background
+run_as_user /opt/scripts/start-server.sh &
 killpid="$!"
 while true
 do
