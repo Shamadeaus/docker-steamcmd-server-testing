@@ -71,9 +71,17 @@ run_as_user() {
     fi
 }
 
-run_as_user "${SCRIPTS_DIR}/prepare_server.sh"
+if error_output=$(run_as_user "${SCRIPTS_DIR}/prepare_server.sh" 2>&1); then
+  echo "---Prepare server completed---"
+else
+  echo "---Error preparing server: $error_output"
+fi
 
-chmod -R ${DATA_PERM} ${DATA_DIR}
+if error_output=$(chmod -R ${DATA_PERM} ${DATA_DIR} 2>&1); then
+  echo "---Permissions set---"
+else
+  echo "---Error setting permissions: $error_output"
+fi
 echo "---Server ready---"
 
 echo "---Start Server---"

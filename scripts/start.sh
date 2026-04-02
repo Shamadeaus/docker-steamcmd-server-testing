@@ -50,6 +50,16 @@ run_as_user() {
 # Start term handler (foreground)
 run_as_user "${SCRIPTS_DIR}/term_handler.sh"
 
+echo "---Checking for copy_configs.sh---"
+if [ -f ${SCRIPTS_DIR}/copy_configs.sh ]; then
+  echo "---Found script Copying Configs---"
+  if error_output=$(run_as_user ${SCRIPTS_DIR}/copy_configs.sh 2>&1); then
+    echo "---Data copied---"
+  else
+    echo "---Error copying configs: $error_output"
+  fi
+fi
+
 # Start main server script in background
 run_as_user /opt/scripts/start-server.sh &
 killpid="$!"
